@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audio Frequency Animation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+      background-color: #f0f4f8;
+    }
+    #micIcon {
+      margin-top: 50px;
+      width: 100px;
+      height: 100px;
+      background-color: #4CAF50;
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 0.6; }
+      50% { opacity: 1; }
+      100% { opacity: 0.6; }
+    }
+    .circle {
+      margin-top: 50px;
+      width: 100px;
+      height: 100px;
+      background-color: #4CAF50;
+      border-radius: 50%;
+      transition: all 0.2s ease;
+    }
+  </style>
+</head>
+<body>
+  <h1>Sound-based Animation</h1>
+  <div id="output"></div>
+  <div id="micIcon"></div>
+
+  <script>
+    // Web Audio API setup
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const analyser = audioContext.createAnalyser();
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    
+    const circle = document.querySelector('.circle');
+
+    // Get user microphone input
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        const source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyser);
+        animate();
+      })
+      .catch(err => {
+        console.error('Audio input error: ', err);
+      });
+
+    // Animation loop
+    function animate() {
+      analyser.getByteFrequencyData(dataArray);
+      
+      // Calculate the average volume (dB)
+      let total = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        total += dataArray[i];
+      }
+      const average = total / bufferLength;
+      
+      // Set animation properties based on sound level (dB)
+      const scale = 1 + average / 255; // Normalize the average sound level to scale
+      circle.style.transform = `scale(${scale})`;  // Animate circle size based on volume level
+
+      // Optionally, use frequency data to create effects based on pitch
+      const frequencyData = dataArray.slice(0, 10); // Get the first 10 frequencies
+      const frequencyAvg = frequencyData.reduce((acc, val) => acc + val, 0) / frequencyData.length;
+      
+      // Change color based on dominant frequency range (low, mid, high)
+      if (frequencyAvg < 40) {
+        circle.style.backgroundColor = '#ff5722'; // Low frequency: red
+      } else if (frequencyAvg < 120) {
+        circle.style.backgroundColor = '#4CAF50'; // Mid frequency: green
+      } else {
+        circle.style.backgroundColor = '#3F51B5'; // High frequency: blue
+      }
+      
+      requestAnimationFrame(animate); // Continue the animation loop
+    }
+  </script>
+</body>
+</html>
